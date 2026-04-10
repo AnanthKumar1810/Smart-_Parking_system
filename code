@@ -1,0 +1,85 @@
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+#include <Servo.h>
+
+// Initialize LCD (Address 0x27 is common, some use 0x3F)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Initialize Servo
+Servo entryGate;
+
+// Pin Definitions
+const int entrySensor = D5;
+const int slot1 = D6;
+const int slot2 = D7;
+const int slot3 = D8;
+const int servoPin = D4;
+
+// Variables
+int totalSlots = 3;
+int availableSlots = 0;
+
+void setup() {
+  // Pin Modes
+  pinMode(entrySensor, INPUT);
+  pinMode(slot1, INPUT);
+  pinMode(slot2, INPUT);
+  pinMode(slot3, INPUT);
+
+  // Servo Setup
+  entryGate.attach(servoPin);
+  entryGate.write(0); // Ensure gate is closed initially
+
+  // LCD Setup
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print(" Smart Parking ");
+  lcd.setCursor(0, 1);
+  lcd.print("   System...   ");
+  delay(2000);
+  lcd.clear();
+}
+
+void loop() {
+  // 1. Calculate Available Slots
+  // Note: IR Sensors usually return LOW (0) when an object is detected
+  int s1 = digitalRead(slot1);
+  int s2 = digitalRead(slot2);
+  int s3 = digitalRead(slot3);
+
+  // Count occupancy (if sensor is HIGH, slot is empty)
+  availableSlots = s1 + s2 + s3;
+
+  // 2. Entry Gate Logic
+  if (digitalRead(entrySensor) == LOW) { // Vehicle detected at entry
+    if (availableSlots > 0) {
+      lcd.setCursor(0, 0);
+      lcd.print("Access Granted  ");
+      lcd.setCursor(0, 1);
+      lcd.print("Entering...     ");
+      
+      entryGate.write(90); // Open gate
+      delay(3000);         // Wait for car to pass
+      entryGate.write(0);  // Close gate
+      lcd.clear();
+    } else {
+      lcd.setCursor(0, 0);
+      lcd.print("Parking Full!   ");
+      lcd.setCursor(0, 1);
+      lcd.print("Please Wait...  ");
+      delay(2000);
+      lcd.clear();
+    }
+  }
+
+  // 3. Update Display Status
+  lcd.setCursor(0, 0);
+  lcd.print("Total Slots: 3  ");
+  lcd.setCursor(0, 1);
+  lcd.print("Available: ");
+  lcd.print(availableSlots);
+  lcd.print("    "); // Clear trailing characters
+
+  delay(200); // Small delay for stability
+}
